@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -25,6 +25,7 @@ namespace MSP.Entidades
         public void IniciarSesion(Usuario usuario)
         {
             ArgumentNullException.ThrowIfNull(usuario);
+            if (usuario.Rol is not ("AdminNacional" or "AdminProvincial" or "Consultor")) throw new UnauthorizedAccessException("Rol no reconocido.");
             if (!usuario.EsAdminNacional && !usuario.ProvinciaId.HasValue)
                 throw new InvalidOperationException("Un usuario provincial o consultor debe pertenecer a una provincia.");
 
@@ -34,3 +35,4 @@ namespace MSP.Entidades
         public void CerrarSesion() => UsuarioActual = null;
     }
 }
+

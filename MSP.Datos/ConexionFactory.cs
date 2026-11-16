@@ -1,7 +1,6 @@
-﻿using System.Data;
+using System.Data;
 using Microsoft.Data.SqlClient;
 using MSP.Entidades;
-using Microsoft.Data.SqlClient;
 
 namespace MSP.Datos
 {
@@ -14,7 +13,7 @@ namespace MSP.Datos
 
         private ConexionFactory()
         {
-            _connectionString = "Data Source=DESKTOP-QJNQ9RN\\KATHRASHEL;Initial Catalog=MSP_CentralizacionMultiTenant;User ID=sa;Password=Mytaetae25uwu;Trust Server Certificate=True;";
+            _connectionString = Environment.GetEnvironmentVariable("MSP_CONNECTION_STRING") ?? "Data Source=.;Initial Catalog=MSP_CentralizacionMultiTenant;Integrated Security=True;Trust Server Certificate=True;Connect Timeout=10;";
         }
 
         public SqlConnection CrearConexion()
@@ -22,7 +21,7 @@ namespace MSP.Datos
             var conn = new SqlConnection(_connectionString);
             conn.Open();
 
-            if (TenantContext.Actual.EstaAutenticado)
+            // Siempre reiniciar el contexto al obtener una conexión del pool.
             {
                 using (var cmd = new SqlCommand("sp_set_session_context", conn))
                 {
@@ -45,3 +44,4 @@ namespace MSP.Datos
         }
     }
 }
+

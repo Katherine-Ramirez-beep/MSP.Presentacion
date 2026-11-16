@@ -1,4 +1,4 @@
-﻿using MSP.Datos;
+using MSP.Datos;
 using MSP.Entidades;
 
 namespace MSP.Negocio
@@ -159,10 +159,11 @@ namespace MSP.Negocio
         public override void Validar(Establecimiento est)
         {
             int? excluirId = est.EstablecimientoId > 0 ? est.EstablecimientoId : null;
-            if (_repo.ExisteCodigo(est.Codigo, excluirId))
+            if (est.Activo && _repo.ExisteCodigo(est.Codigo, excluirId))
                 throw new InvalidOperationException($"Ya existe un establecimiento activo registrado con el código '{est.Codigo.ToUpper()}'.");
 
             base.Validar(est);
         }
     }
 }
+

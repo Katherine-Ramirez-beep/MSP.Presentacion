@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using Microsoft.Data.SqlClient;
 using MSP.Entidades;
 
@@ -123,6 +123,17 @@ namespace MSP.Datos
             cmd.Parameters.AddWithValue("@Activo", activo);
             cmd.Parameters.AddWithValue("@Desbloquear", desbloquear);
             cmd.Parameters.AddWithValue("@Id", usuarioId);
+            cmd.ExecuteNonQuery();
+        }
+
+        public void ActualizarPerfil(int id, string nombre, string rol, int? provinciaId)
+        {
+            using var conn = ConexionFactory.Instancia.CrearConexion();
+            using var cmd = new SqlCommand("UPDATE Usuarios SET NombreCompleto=@Nombre, Rol=@Rol, ProvinciaId=@Provincia WHERE UsuarioId=@Id", conn);
+            cmd.Parameters.AddWithValue("@Nombre", nombre.Trim());
+            cmd.Parameters.AddWithValue("@Rol", rol);
+            cmd.Parameters.AddWithValue("@Provincia", (object?)provinciaId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@Id", id);
             cmd.ExecuteNonQuery();
         }
 

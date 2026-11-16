@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using Microsoft.Data.SqlClient;
 using MSP.Entidades;
 
@@ -24,7 +24,7 @@ namespace MSP.Datos
         {
             var lista = new List<BitacoraRegistro>();
             const string sql = @"
-                SELECT TOP 200 BitacoraId, FechaHora, UsuarioId, NombreUsuario, Rol, ProvinciaId, Modulo, Accion, Descripcion
+                SELECT BitacoraId, FechaHora, UsuarioId, NombreUsuario, Rol, ProvinciaId, Modulo, Accion, Descripcion
                 FROM Bitacora
                 WHERE (@ProvinciaId IS NULL OR ProvinciaId = @ProvinciaId)
                 ORDER BY FechaHora DESC;";
@@ -68,7 +68,7 @@ namespace MSP.Datos
         {
             var lista = new List<AlertaSeguridadTenant>();
             const string sql = @"
-                SELECT TOP 200 a.AlertaId, a.FechaHora, a.UsuarioOrigen, a.ProvinciaInvolucradaId,
+                SELECT a.AlertaId, a.FechaHora, a.UsuarioOrigen, a.ProvinciaInvolucradaId,
                        ISNULL(p.Nombre, N'Global / Nacional') AS NombreProvincia,
                        a.CategoriaAlerta, a.NivelRiesgo, a.MensajeTecnico, a.Resuelta
                 FROM AlertasSeguridadTenant a

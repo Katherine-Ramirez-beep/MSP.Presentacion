@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using MSP.Datos;
 using MSP.Entidades;
 
@@ -21,6 +21,8 @@ namespace MSP.Negocio
             if (string.IsNullOrWhiteSpace(password) || password.Length < 6)
                 throw new ArgumentException("La contraseña debe tener mínimo 6 caracteres.");
 
+            ValidacionTexto.Longitud(nombreCompleto, 150, "Nombre completo");
+            ValidacionTexto.Longitud(nombreUsuario, 50, "Usuario");
             var (hash, salt) = SeguridadCrypto.CrearHash(password);
 
             _usuarioRepo.Insertar(new Usuario
@@ -85,7 +87,7 @@ namespace MSP.Negocio
 
             _usuarioRepo.RegistrarLoginExitoso(usuario.UsuarioId);
             TenantContext.Actual.IniciarSesion(usuario);
-            GestorEventosSistema.Instancia.Notificar("Autenticación", "INICIO_SESION", $"Inicio de sesión exitoso ({TenantContext.Actual.DescripcionAlcance}).");
+            try { GestorEventosSistema.Instancia.Notificar("Autenticación", "INICIO_SESION", $"Inicio de sesión exitoso ({TenantContext.Actual.DescripcionAlcance})."); } catch { TenantContext.Actual.CerrarSesion(); throw; }
 
             return usuario;
         }
@@ -110,13 +112,12 @@ namespace MSP.Negocio
         {
             if (TenantContext.Actual.EstaAutenticado)
             {
-                GestorEventosSistema.Instancia.Notificar("Autenticación", "CIERRE_SESION", "Cierre de sesión del usuario.");
-                TenantContext.Actual.CerrarSesion();
+                try { GestorEventosSistema.Instancia.Notificar("Autenticación", "CIERRE_SESION", "Cierre de sesión del usuario."); } finally { TenantContext.Actual.CerrarSesion(); }
             }
         }
     }
 
-    public class EstablecimientoService
+    public partial class EstablecimientoService
     {
         private readonly EstablecimientoRepositorio _repo = new();
 
@@ -129,6 +130,7 @@ namespace MSP.Negocio
 
         public void Guardar(Establecimiento est)
         {
+            ValidarDestinoExistente(est);
             var v1 = new ValidadorPermisosTenantHandler();
             var v2 = new ValidadorCamposObligatoriosHandler();
             var v3 = new ValidadorUnicidadCodigoHandler();
@@ -155,7 +157,7 @@ namespace MSP.Negocio
         }
     }
 
-    public class AdministracionService
+    public partial class AdministracionService
     {
         private readonly UsuarioRepositorio _usuarioRepo = new();
         private readonly CatalogoRepositorio _catalogoRepo = new();
@@ -163,6 +165,7 @@ namespace MSP.Negocio
 
         public List<Usuario> ListarUsuarios()
         {
+            if (!FabricaEstrategiaRol.ObtenerEstrategiaActual().PuedeGestionarUsuarios) throw new UnauthorizedAccessException("Sin permisos para consultar usuarios.");
             int? provFiltro = FabricaEstrategiaRol.ObtenerEstrategiaActual().ResolverFiltroProvincia(null);
             return _usuarioRepo.Listar(provFiltro);
         }
@@ -172,6 +175,7 @@ namespace MSP.Negocio
             if (!FabricaEstrategiaRol.ObtenerEstrategiaActual().PuedeGestionarUsuarios)
                 throw new UnauthorizedAccessException("No tiene permisos para crear usuarios.");
 
+            ValidarRolProvincia(rol, provinciaId);
             if (TenantContext.Actual.EsAdminProvincial)
             {
                 if (rol == "AdminNacional")
@@ -186,6 +190,8 @@ namespace MSP.Negocio
             if (string.IsNullOrWhiteSpace(nombreCompleto) || string.IsNullOrWhiteSpace(nombreUsuario) || password.Length < 6)
                 throw new ArgumentException("Complete todos los campos y use una contraseña de al menos 6 caracteres.");
 
+            ValidacionTexto.Longitud(nombreCompleto, 150, "Nombre completo");
+            ValidacionTexto.Longitud(nombreUsuario, 50, "Usuario");
             var (hash, salt) = SeguridadCrypto.CrearHash(password);
             _usuarioRepo.Insertar(new Usuario
             {
@@ -205,6 +211,8 @@ namespace MSP.Negocio
             if (!FabricaEstrategiaRol.ObtenerEstrategiaActual().PuedeGestionarUsuarios)
                 throw new UnauthorizedAccessException("Sin permisos para gestionar usuarios.");
 
+            ValidarUsuarioObjetivo(usuarioId);
+            if (usuarioId == TenantContext.Actual.UsuarioActual!.UsuarioId && !activo) throw new InvalidOperationException("No puede desactivar su propia cuenta.");
             _usuarioRepo.CambiarEstadoBloqueoOActivo(usuarioId, activo, desbloquear);
             GestorEventosSistema.Instancia.Notificar("Usuarios", "ESTADO", $"Se actualizó estado/bloqueo del usuario ID={usuarioId}.");
         }
@@ -219,6 +227,7 @@ namespace MSP.Negocio
             if (string.IsNullOrWhiteSpace(codigo) || string.IsNullOrWhiteSpace(nombre) || string.IsNullOrWhiteSpace(regionSalud))
                 throw new ArgumentException("Todos los campos de la provincia son obligatorios.");
 
+            ValidacionTexto.Longitud(codigo, 10, "Código"); ValidacionTexto.Longitud(nombre, 100, "Provincia"); ValidacionTexto.Longitud(regionSalud, 80, "Región de salud");
             _catalogoRepo.InsertarProvincia(new Provincia { Codigo = codigo, Nombre = nombre, RegionSalud = regionSalud });
             GestorEventosSistema.Instancia.Notificar("Provincias", "CREAR", $"Se registró la provincia '{nombre}' ({codigo}).");
         }
@@ -242,6 +251,7 @@ namespace MSP.Negocio
             if (string.IsNullOrWhiteSpace(codigo) || string.IsNullOrWhiteSpace(nombre))
                 throw new ArgumentException("Código y Nombre son obligatorios.");
 
+            ValidacionTexto.Longitud(codigo, 15, "Código"); ValidacionTexto.Longitud(nombre, 100, "Tipo"); ValidacionTexto.Longitud(descripcion, 250, "Descripción");
             _catalogoRepo.InsertarTipo(new TipoEstablecimiento { Codigo = codigo, Nombre = nombre, Descripcion = descripcion });
             GestorEventosSistema.Instancia.Notificar("TiposEstablecimientos", "CREAR", $"Se creó el tipo '{nombre}'.");
         }
@@ -277,108 +287,6 @@ namespace MSP.Negocio
         }
     }
 
-    public static class ExportadorBitacoraService
-    {
-        public static void Exportar(List<BitacoraRegistro> registros, string rutaArchivo, string formato)
-        {
-            var sb = new StringBuilder();
-            string alcance = TenantContext.Actual.DescripcionAlcance;
-
-            switch (formato.ToUpper())
-            {
-                case "EXCEL":
-                    sb.AppendLine("ID;Fecha y Hora;Usuario;Rol;Modulo;Accion;Descripcion");
-                    foreach (var r in registros)
-                        sb.AppendLine($"{r.BitacoraId};{r.FechaHora:yyyy-MM-dd HH:mm:ss};{r.NombreUsuario};{r.Rol};{r.Modulo};{r.Accion};\"{r.Descripcion.Replace("\"", "'")}\"");
-                    File.WriteAllText(rutaArchivo, sb.ToString(), new UTF8Encoding(true));
-                    break;
-
-                case "WORD":
-                    sb.AppendLine("<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'>");
-                    sb.AppendLine("<head><meta charset='utf-8'><title>Bitácora MSP</title></head><body style='font-family:Segoe UI, Arial;'>");
-                    sb.AppendLine("<h2 style='color:#0D5C63;'>MINISTERIO DE SALUD PÚBLICA - BITÁCORA DE AUDITORÍA</h2>");
-                    sb.AppendLine($"<p><b>{alcance}</b> | Generado: {DateTime.Now:dd/MM/yyyy HH:mm}</p>");
-                    sb.AppendLine("<table border='1' cellspacing='0' cellpadding='6' style='border-collapse:collapse; width:100%; font-size:10pt;'>");
-                    sb.AppendLine("<tr style='background:#0D5C63; color:white;'><th>ID</th><th>Fecha/Hora</th><th>Usuario</th><th>Rol</th><th>Módulo</th><th>Acción</th><th>Descripción</th></tr>");
-                    foreach (var r in registros)
-                        sb.AppendLine($"<tr><td>{r.BitacoraId}</td><td>{r.FechaHora:dd/MM/yyyy HH:mm}</td><td>{r.NombreUsuario}</td><td>{r.Rol}</td><td>{r.Modulo}</td><td>{r.Accion}</td><td>{r.Descripcion}</td></tr>");
-                    sb.AppendLine("</table></body></html>");
-                    File.WriteAllText(rutaArchivo, sb.ToString(), Encoding.UTF8);
-                    break;
-
-                case "PDF":
-                    GenerarPdfNativo(registros, rutaArchivo, alcance);
-                    break;
-
-                default:
-                    sb.AppendLine("==========================================================================");
-                    sb.AppendLine(" MINISTERIO DE SALUD - REPORTE OFICIAL DE BITÁCORA DE AUDITORÍA");
-                    sb.AppendLine($" {alcance} | Fecha: {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
-                    sb.AppendLine("==========================================================================");
-                    foreach (var r in registros)
-                        sb.AppendLine($"[{r.FechaHora:yyyy-MM-dd HH:mm:ss}] [{r.Modulo} - {r.Accion}] Usuario: {r.NombreUsuario} ({r.Rol}) -> {r.Descripcion}");
-                    File.WriteAllText(rutaArchivo, sb.ToString(), Encoding.UTF8);
-                    break;
-            }
-
-            GestorEventosSistema.Instancia.Notificar("Bitácora", "EXPORTAR", $"Exportación de bitácora en formato {formato}.");
-        }
-
-        private static void GenerarPdfNativo(List<BitacoraRegistro> registros, string rutaArchivo, string alcance)
-        {
-            var lineas = new List<string>
-            {
-                "MINISTERIO DE SALUD - BITACORA DE AUDITORIA MULTI-TENANT",
-                alcance,
-                $"Fecha de emision: {DateTime.Now:dd/MM/yyyy HH:mm}",
-                "--------------------------------------------------------------------------------"
-            };
-
-            foreach (var r in registros.Take(40))
-            {
-                string texto = $"{r.FechaHora:dd/MM HH:mm} | {r.NombreUsuario} | {r.Modulo}/{r.Accion} | {r.Descripcion}";
-                if (texto.Length > 92) texto = texto[..92] + "...";
-                lineas.Add(LimpiarTextoPdf(texto));
-            }
-
-            var contentStream = new StringBuilder();
-            contentStream.AppendLine("BT /F1 11 Tf 40 750 Td 14 TL");
-            for (int i = 0; i < lineas.Count; i++)
-            {
-                if (i == 1) contentStream.AppendLine("/F1 9 Tf");
-                contentStream.AppendLine($"({lineas[i]}) Tj T*");
-            }
-            contentStream.AppendLine("ET");
-
-            byte[] streamBytes = Encoding.ASCII.GetBytes(contentStream.ToString());
-            using var ms = new MemoryStream();
-            using var bw = new BinaryWriter(ms, Encoding.ASCII);
-
-            var offsets = new List<long>();
-            void WriteStr(string s) => bw.Write(Encoding.ASCII.GetBytes(s));
-
-            WriteStr("%PDF-1.4\n");
-            offsets.Add(ms.Position); WriteStr("1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n");
-            offsets.Add(ms.Position); WriteStr("2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n");
-            offsets.Add(ms.Position); WriteStr("3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj\n");
-            offsets.Add(ms.Position); WriteStr($"4 0 obj << /Length {streamBytes.Length} >> stream\n");
-            bw.Write(streamBytes);
-            WriteStr("\nendstream endobj\n");
-            offsets.Add(ms.Position); WriteStr("5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Courier >> endobj\n");
-
-            long xrefPos = ms.Position;
-            WriteStr($"xref\n0 {offsets.Count + 1}\n0000000000 65535 f \n");
-            foreach (var off in offsets) WriteStr($"{off:D10} 00000 n \n");
-            WriteStr($"trailer << /Size {offsets.Count + 1} /Root 1 0 R >>\nstartxref\n{xrefPos}\n%%EOF");
-
-            File.WriteAllBytes(rutaArchivo, ms.ToArray());
-        }
-
-        private static string LimpiarTextoPdf(string s)
-        {
-            return s.Replace("á", "a").Replace("é", "e").Replace("í", "i").Replace("ó", "o").Replace("ú", "u")
-                    .Replace("Á", "A").Replace("É", "E").Replace("Í", "I").Replace("Ó", "O").Replace("Ú", "U")
-                    .Replace("ñ", "n").Replace("Ñ", "N").Replace("(", "[").Replace(")", "]").Replace("\\", "/");
-        }
-    }
 }
+
+

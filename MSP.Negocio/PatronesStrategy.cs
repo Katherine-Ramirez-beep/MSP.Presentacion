@@ -1,4 +1,4 @@
-﻿using MSP.Entidades;
+using MSP.Entidades;
 
 namespace MSP.Negocio
 {
@@ -42,6 +42,7 @@ namespace MSP.Negocio
     {
         public static IEstrategiaAccesoTenant ObtenerEstrategiaActual()
         {
+            if (!TenantContext.Actual.EstaAutenticado) throw new UnauthorizedAccessException("No hay sesión activa.");
             if (TenantContext.Actual.EsAdminNacional) return new EstrategiaNacional();
             if (TenantContext.Actual.EsAdminProvincial) return new EstrategiaProvincial();
             return new EstrategiaConsultor();

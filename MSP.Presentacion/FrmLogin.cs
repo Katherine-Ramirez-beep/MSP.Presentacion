@@ -41,11 +41,10 @@ namespace MSP.Presentacion
             try
             {
                 _auth.IniciarSesion(txtUser.Text, txtPass.Text);
+                using var principal = new FrmPrincipal();
                 Hide();
-                //using var principal = new FrmPrincipal();
-                //principal.ShowDialog();
-                txtPass.Clear();
-                Show();
+                try { principal.ShowDialog(); }
+                finally { MSP.Entidades.TenantContext.Actual.CerrarSesion(); txtPass.Clear(); Show(); }
             }
             catch (Exception ex)
             {
@@ -69,3 +68,4 @@ namespace MSP.Presentacion
         }
     }
 }
+
