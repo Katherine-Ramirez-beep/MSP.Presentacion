@@ -67,7 +67,7 @@
             pnlHeader.Dock = DockStyle.Top;
             pnlHeader.Location = new Point(0, 0);
             pnlHeader.Name = "pnlHeader";
-            pnlHeader.Size = new Size(597, 115);
+            pnlHeader.Size = new Size(596, 115);
             pnlHeader.TabIndex = 2;
             // 
             // lblSubtitulo
@@ -77,7 +77,7 @@
             lblSubtitulo.ForeColor = Color.FromArgb(204, 251, 241);
             lblSubtitulo.Location = new Point(0, 65);
             lblSubtitulo.Name = "lblSubtitulo";
-            lblSubtitulo.Size = new Size(597, 50);
+            lblSubtitulo.Size = new Size(596, 50);
             lblSubtitulo.TabIndex = 0;
             lblSubtitulo.Text = "Plataforma Nacional Multi-Tenant de Establecimientos";
             lblSubtitulo.TextAlign = ContentAlignment.TopCenter;
@@ -89,7 +89,7 @@
             lblTitulo.ForeColor = Color.White;
             lblTitulo.Location = new Point(0, 0);
             lblTitulo.Name = "lblTitulo";
-            lblTitulo.Size = new Size(597, 65);
+            lblTitulo.Size = new Size(596, 65);
             lblTitulo.TabIndex = 1;
             lblTitulo.Text = "MINISTERIO DE SALUD PÚBLICA";
             lblTitulo.TextAlign = ContentAlignment.MiddleCenter;
@@ -296,7 +296,7 @@
             // 
             AcceptButton = btnEntrar;
             BackColor = Color.FromArgb(241, 245, 249);
-            ClientSize = new Size(597, 534);
+            ClientSize = new Size(596, 557);
             Controls.Add(pnlSetup);
             Controls.Add(pnlLogin);
             Controls.Add(pnlHeader);
